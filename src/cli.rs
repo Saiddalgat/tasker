@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use crate::commands::{add::handle_add, list::handle_list};
 
 #[derive(Parser)]
-#[command(name = "tasker", version = "0.1", author = "Òû")]
+#[command(name = "tasker", version = "0.1", author = "Ğ¢Ñ‹")]
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,
