@@ -1,2 +1,4 @@
 /target
 .vs
+Cargo.lock
+tasks.json
