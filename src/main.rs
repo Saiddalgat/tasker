@@ -22,12 +22,18 @@ impl Task {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct AppSettings {
+    dark_mode: bool,
+}
+
 #[derive(Default)]
 struct TaskApp {
     tasks: Vec<Task>,
     new_task: String,
     new_deadline: String,
     new_category: usize,
+    dark_mode: bool,
 }
 
 impl TaskApp {
@@ -42,14 +48,49 @@ impl TaskApp {
         let data = serde_json::to_string_pretty(&self.tasks).unwrap();
         fs::write("tasks.json", data).expect("Failed to save tasks");
     }
+
+    fn load_settings(&mut self) {
+        if let Ok(data) = fs::read_to_string("settings.json") {
+            if let Ok(settings) = serde_json::from_str::<AppSettings>(&data) {
+                self.dark_mode = settings.dark_mode;
+            }
+        }
+    }
+
+    fn save_settings(&self) {
+        let data = serde_json::to_string_pretty(&AppSettings {
+            dark_mode: self.dark_mode,
+        })
+        .unwrap();
+        fs::write("settings.json", data).expect("Failed to save settings");
+    }
 }
 
 impl eframe::App for TaskApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // применяем тему
+        if self.dark_mode {
+            ctx.set_visuals(egui::Visuals::dark());
+        } else {
+            ctx.set_visuals(egui::Visuals::light());
+        }
+
         let categories = vec!["Личное", "Работа", "Учёба", "Проект", "Другое"];
 
+        // Переключатель темы
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("🌗 Тема:");
+                let theme_label = if self.dark_mode { "Тёмная" } else { "Светлая" };
+                if ui.checkbox(&mut self.dark_mode, theme_label).changed() {
+                    self.save_settings();
+                }
+            });
+        });
+
+        // Главная панель
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("📋 Tasker с категориями и дедлайнами");
+            ui.heading("📋 Tasker GUI");
 
             // Новая задача
             ui.horizontal(|ui| {
@@ -157,6 +198,7 @@ impl eframe::App for TaskApp {
 fn main() -> Result<(), eframe::Error> {
     let mut app = TaskApp::default();
     app.load_tasks();
+    app.load_settings();
 
     let options = eframe::NativeOptions::default();
     eframe::run_native("Tasker GUI", options, Box::new(|_cc| Box::new(app)))
