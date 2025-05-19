@@ -87,6 +87,19 @@ impl eframe::App for TaskApp {
                 }
             });
         });
+        // Статистика выполнения
+        let total = self.tasks.len();
+        let done = self.tasks.iter().filter(|t| t.done).count();
+
+        egui::TopBottomPanel::top("progress_panel").show(ctx, |ui| {
+            if total > 0 {
+                let percent = done as f32 / total as f32;
+                ui.label(format!("✅ Выполнено: {}/{} ({:.0}%)", done, total, percent * 100.0));
+                ui.add(egui::ProgressBar::new(percent).desired_width(f32::INFINITY));
+            } else {
+                ui.label("📝 Задач пока нет");
+            }
+        });
 
         // Главная панель
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -202,4 +215,18 @@ fn main() -> Result<(), eframe::Error> {
 
     let options = eframe::NativeOptions::default();
     eframe::run_native("Tasker GUI", options, Box::new(|_cc| Box::new(app)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn task_creation_works() {
+        let t = Task::new("Протестировать".to_string(), Some("01.01.2025".to_string()), "Тест".to_string());
+        assert_eq!(t.description, "Протестировать");
+        assert_eq!(t.done, false);
+        assert_eq!(t.deadline, Some("01.01.2025".to_string()));
+        assert_eq!(t.category, "Тест");
+    }
 }
