@@ -42,6 +42,7 @@ impl eframe::App for TaskApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("📋 Tasker GUI");
 
+            // Новая задача
             ui.horizontal(|ui| {
                 ui.text_edit_singleline(&mut self.new_task);
                 if ui.button("Добавить").clicked() {
@@ -55,12 +56,23 @@ impl eframe::App for TaskApp {
 
             ui.separator();
 
+            // Список задач
             let mut changed_any = false;
+            let mut to_remove: Option<usize> = None;
 
-            for task in &mut self.tasks {
+            for (i, task) in self.tasks.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     let changed = ui.checkbox(&mut task.done, "").changed();
-                    ui.label(&task.description);
+
+                    if task.done {
+                        ui.label(egui::RichText::new(&task.description).strikethrough().italics().weak());
+                    } else {
+                        ui.label(&task.description);
+                    }
+
+                    if ui.button("🗑").clicked() {
+                        to_remove = Some(i);
+                    }
 
                     if changed {
                         changed_any = true;
@@ -72,6 +84,12 @@ impl eframe::App for TaskApp {
                 self.save_tasks();
             }
 
+            if let Some(index) = to_remove {
+                self.tasks.remove(index);
+                self.save_tasks();
+            }
+
+            ui.separator();
             if ui.button("💾 Сохранить").clicked() {
                 self.save_tasks();
             }
@@ -86,4 +104,3 @@ fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions::default();
     eframe::run_native("Tasker GUI", options, Box::new(|_cc| Box::new(app)))
 }
-//GUI version
