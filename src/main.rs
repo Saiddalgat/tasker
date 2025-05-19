@@ -1,4 +1,5 @@
-﻿use eframe::egui;
+﻿use chrono::{Datelike, Local, NaiveDate};
+use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
@@ -6,13 +7,15 @@ use std::fs;
 struct Task {
     description: String,
     done: bool,
+    deadline: Option<String>,
 }
 
 impl Task {
-    fn new(desc: String) -> Self {
+    fn new(desc: String, deadline: Option<String>) -> Self {
         Task {
             description: desc,
             done: false,
+            deadline,
         }
     }
 }
@@ -21,6 +24,7 @@ impl Task {
 struct TaskApp {
     tasks: Vec<Task>,
     new_task: String,
+    new_deadline: String,
 }
 
 impl TaskApp {
@@ -40,15 +44,27 @@ impl TaskApp {
 impl eframe::App for TaskApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("📋 Tasker GUI");
+            ui.heading("📋 Tasker с дедлайнами");
 
             // Новая задача
             ui.horizontal(|ui| {
                 ui.text_edit_singleline(&mut self.new_task);
+                ui.label("до:");
+                ui.text_edit_singleline(&mut self.new_deadline);
+
                 if ui.button("Добавить").clicked() {
                     if !self.new_task.trim().is_empty() {
-                        self.tasks.push(Task::new(self.new_task.trim().to_string()));
+                        let deadline = if self.new_deadline.trim().is_empty() {
+                            None
+                        } else {
+                            Some(self.new_deadline.trim().to_string())
+                        };
+
+                        self.tasks
+                            .push(Task::new(self.new_task.trim().to_string(), deadline));
+
                         self.new_task.clear();
+                        self.new_deadline.clear();
                         self.save_tasks();
                     }
                 }
@@ -56,18 +72,38 @@ impl eframe::App for TaskApp {
 
             ui.separator();
 
-            // Список задач
             let mut changed_any = false;
             let mut to_remove: Option<usize> = None;
+            let today = Local::now().naive_local().date();
 
             for (i, task) in self.tasks.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     let changed = ui.checkbox(&mut task.done, "").changed();
 
-                    if task.done {
-                        ui.label(egui::RichText::new(&task.description).strikethrough().italics().weak());
+                    let mut label = if task.done {
+                        egui::RichText::new(&task.description)
+                            .strikethrough()
+                            .italics()
+                            .weak()
                     } else {
-                        ui.label(&task.description);
+                        egui::RichText::new(&task.description)
+                    };
+
+                    // Подсветка просроченных
+                    if !task.done {
+                        if let Some(date_str) = &task.deadline {
+                            if let Ok(date) = NaiveDate::parse_from_str(date_str, "%d.%m.%Y") {
+                                if date < today {
+                                    label = label.color(egui::Color32::RED);
+                                }
+                            }
+                        }
+                    }
+
+                    ui.label(label);
+
+                    if let Some(d) = &task.deadline {
+                        ui.label(format!("⏰ до {}", d));
                     }
 
                     if ui.button("🗑").clicked() {
