@@ -8,14 +8,16 @@ struct Task {
     description: String,
     done: bool,
     deadline: Option<String>,
+    category: String,
 }
 
 impl Task {
-    fn new(desc: String, deadline: Option<String>) -> Self {
+    fn new(desc: String, deadline: Option<String>, category: String) -> Self {
         Task {
             description: desc,
             done: false,
             deadline,
+            category,
         }
     }
 }
@@ -25,6 +27,7 @@ struct TaskApp {
     tasks: Vec<Task>,
     new_task: String,
     new_deadline: String,
+    new_category: usize,
 }
 
 impl TaskApp {
@@ -43,14 +46,26 @@ impl TaskApp {
 
 impl eframe::App for TaskApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let categories = vec!["Личное", "Работа", "Учёба", "Проект", "Другое"];
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("📋 Tasker с дедлайнами");
+            ui.heading("📋 Tasker с категориями и дедлайнами");
 
             // Новая задача
             ui.horizontal(|ui| {
                 ui.text_edit_singleline(&mut self.new_task);
                 ui.label("до:");
                 ui.text_edit_singleline(&mut self.new_deadline);
+            });
+
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_label("Категория")
+                    .selected_text(categories[self.new_category])
+                    .show_ui(ui, |ui| {
+                        for (i, cat) in categories.iter().enumerate() {
+                            ui.selectable_value(&mut self.new_category, i, *cat);
+                        }
+                    });
 
                 if ui.button("Добавить").clicked() {
                     if !self.new_task.trim().is_empty() {
@@ -60,11 +75,15 @@ impl eframe::App for TaskApp {
                             Some(self.new_deadline.trim().to_string())
                         };
 
-                        self.tasks
-                            .push(Task::new(self.new_task.trim().to_string(), deadline));
+                        self.tasks.push(Task::new(
+                            self.new_task.trim().to_string(),
+                            deadline,
+                            categories[self.new_category].to_string(),
+                        ));
 
                         self.new_task.clear();
                         self.new_deadline.clear();
+                        self.new_category = 0;
                         self.save_tasks();
                     }
                 }
@@ -105,6 +124,8 @@ impl eframe::App for TaskApp {
                     if let Some(d) = &task.deadline {
                         ui.label(format!("⏰ до {}", d));
                     }
+
+                    ui.label(format!("📁 {}", task.category));
 
                     if ui.button("🗑").clicked() {
                         to_remove = Some(i);
